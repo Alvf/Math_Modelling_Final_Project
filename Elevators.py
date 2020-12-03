@@ -77,6 +77,38 @@ class Passenger(object):
                 end_floor = random.randint(1, N)
             self.queries.append((start_floor, end_floor))
     
+    def __recluse_query(self, N, house):
+        '''
+        Adds one home-and-back query to the queries list
+        also clears old query list
+
+        Inputs:
+            N (int): the maximum height of the building
+            house (int): the story that the passenger's residence is on
+        '''  
+        if self.queries == []:
+            self.queries.append((house, 1))
+        else:
+            _, start_floor = self.queries[-1]
+            if start_floor == house:
+                self.queries.append((house, 1))
+            else:
+                self.queries.append((1, house))
+        
+    def make_recluse_queries(self, num_queries, N, house):
+        '''
+        Adds a number of home-and-back queries to the queries list
+        also clears old query list
+
+        Inputs:
+            num_queries (int): the number of queries to add
+            N (int): the maximum height of the building
+            house (int): the story that the passenger's residence is on
+        '''
+        self.queries = []
+        for _ in range(num_queries):
+            self.__recluse_query(N, house)
+
     def make_queries(self, num_queries, N):
         '''
         Adds a number of queries to the queries list of the passenger
@@ -114,6 +146,120 @@ class Passenger(object):
         returns the id, the number of queries, and which query they're on
         '''
         return "{} has {} queries and is on query index {}".format(self.id, self.num_queries(), self.on_request)
+
+
+def passenger_query_rep(passengers):
+    '''
+    Takes a list of passengers and returns a list of passengers with
+    repetition depending on how long their query lists are
+
+    Inputs:
+        N (int): the number of stories the building has
+        passengers (list of Passengers): the passengers
+
+    Returns:
+        id: total time spent in transit for the day
+    '''
+    rep_list = []
+    for ps in passengers:
+        for _ in range(ps.num_queries()):
+            rep_list.append(ps)
+    return rep_list
+
+
+def graph_sim_recluse_grow_random(N, points, house, trials):
+    '''
+    Preps two numpy arrays for graphing; A recluse passenger 
+    dominates over a random passenger
+
+    Inputs:
+        N(int): building height
+        points(int): total # data points at end
+        house(int): story of recluse's house
+        trials(int): number of trials to sim
+    
+    Returns:
+        dictionary passenger id: average amount of time spent in transit/query
+    '''
+    P_random = []
+    P_recluse = []
+    i = 1
+    while len(P_random) < points:
+        final_totals = {}
+        for _ in range(trials):
+            p_rand = Passenger('r', N, 1)
+            p_recluse = Passenger('e', N, i)
+            p_recluse.make_recluse_queries(i, N, house)
+            day_totals = simulate_day(N, [p_rand, p_recluse])
+            for key, val in day_totals.items():
+                final_totals[key] = final_totals.get(key, 0) + val
+        final_totals['r'] /= trials
+        final_totals['e'] /= trials
+        final_totals['e'] /= i
+        P_random.append(final_totals['r'])
+        P_recluse.append(final_totals['e'])
+        i += 1
+    return(P_random, P_recluse)
+
+
+def graph_sim_random_grow_recluse(N, points, house, trials):
+    '''
+    Preps two numpy arrays for graphing; A random passenger 
+    dominates over a recluse passenger
+
+    Inputs:
+        N(int): building height
+        points(int): total # data points at end
+        house(int): story of recluse's house
+        trials(int): number of trials to sim
+    
+    Returns:
+        dictionary passenger id: average amount of time spent in transit/query
+    '''
+    P_random = []
+    P_recluse = []
+    i = 1
+    while len(P_random) < points:
+        final_totals = {}
+        for _ in range(trials):
+            p_rand = Passenger('r', N, i)
+            p_recluse = Passenger('e', N, 1)
+            p_recluse.make_recluse_queries(1, N, house)
+            day_totals = simulate_day(N, [p_rand, p_recluse])
+            for key, val in day_totals.items():
+                final_totals[key] = final_totals.get(key, 0) + val
+        final_totals['r'] /= trials
+        final_totals['e'] /= trials
+        final_totals['r'] /= i
+        P_random.append(final_totals['r'])
+        P_recluse.append(final_totals['e'])
+        i += 1
+    return(P_random, P_recluse)
+
+
+def simulate_day(N, passengers):
+    '''
+    Takes an array of passengers and simulates one day where each passenger
+    entirely completes the queries in their list
+
+    Inputs:
+        N (int): the number of stories the building has
+        passengers (list of Passengers): the passengers
+
+    Returns:
+        dictionary {id: total time spent in transit for the day}
+    '''
+    return_dict = {}
+
+    rep_list = passenger_query_rep(passengers)
+    ele = Elevator(1)
+
+    random.shuffle(rep_list)
+    for ps in rep_list:
+        start, end = ps.next_query()
+        return_dict[ps.id] = return_dict.get(ps.id, 0) + ele.time_move(start) + ele.time_move(end)
+    return return_dict
+
 
 def dumb_prediction_analysis(N, query_list, trials):
     '''
