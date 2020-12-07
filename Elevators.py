@@ -384,6 +384,30 @@ def gen_graphing_list(N, Q1_upper):
     return (np.array(P1), np.array(P2))
 
 
+def gen_sym_graphing_list_sim(N, Q_upper,trials):
+    '''
+    Generates a list of P1 times and P2 times illustrating average wait/query
+    changes in an N-story building as P1 and P2 queries grow equally fast
+    Inputs:
+        Q_upper: The upper bound for Q to take (1 <= Q <= Q_upper)
+        N: the amount of stories in the building
+        trials: the amount of trials before returning a final value for that
+          query amount
+    
+    Returns:
+        Two numpy arrays: (P1 transit/query, P2 transit/query) as they vary.
+    '''
+    P1 = []
+    P2 = []
+    query_list = [1,2]
+    for n in range(Q_upper):
+        waits = simulate_dumb_day(N, query_list,trials)
+        P1.append(waits[1] / (n + 1))
+        P2.append(waits[2] / (n + 1))
+        query_list += [1,2]
+    return (np.array(P1), np.array(P2))
+
+
 def gen_sym_graphing_list(N, Q_upper):
     '''
     Generates a list of P1 times and P2 times illustrating average wait/query
